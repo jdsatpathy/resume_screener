@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Screener — Smart Candidate Ranking</title>
+    <meta name="description"
+        content="AI-powered resume screening tool for recruiters. Upload resumes and job descriptions to get ranked candidates instantly.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <!-- Background -->
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-icon">
+                    <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Logo" class="logo-img">
+                </div>
+                <span class="logo-text">Resume Screener</span>
+            </div>
+            <div class="header-badge">
+                <span class="badge-dot"></span>
+                AI-Powered Screening
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Hero -->
+            <div class="hero">
+                <div class="hero-tag">For Recruiters</div>
+                <h1 class="hero-title">Find Your <span class="gradient-text">Perfect Hire</span><br>in Seconds</h1>
+                <p class="hero-subtitle">Upload resumes and a job description. Our AI ranks candidates by fit — so you
+                    interview the right people first.</p>
+            </div>
+
+            <!-- Form -->
+            <form id="screeningForm" enctype="multipart/form-data">
+                <div class="form-grid">
+
+                    <!-- Step 1: Job Description -->
+                    <div class="card" id="jd-card">
+                        <div class="card-header">
+                            <div class="step-badge">01</div>
+                            <div>
+                                <h2 class="card-title">Job Description</h2>
+                                <p class="card-subtitle">Drop your JD file here</p>
+                            </div>
+                        </div>
+                        <div class="drop-zone" id="jd-drop-zone">
+                            <input type="file" id="job_description" name="job_description" accept=".pdf,.docx,.txt"
+                                class="file-input" required>
+                            <div class="drop-zone-content" id="jd-drop-content">
+                                <div class="drop-icon">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                                        <path
+                                            d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                            stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                                <p class="drop-title">Drag & drop your JD file</p>
+                                <p class="drop-hint">or <span class="drop-link">browse to upload</span></p>
+                                <p class="drop-formats">PDF, DOCX, TXT supported</p>
+                            </div>
+                            <div class="file-preview" id="jd-preview" style="display:none;">
+                                <div class="file-icon">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                        <path
+                                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                            stroke="currentColor" stroke-width="1.5" />
+                                    </svg>
+                                </div>
+                                <div class="file-info">
+                                    <span class="file-name" id="jd-filename"></span>
+                                    <span class="file-size" id="jd-filesize"></span>
+                                </div>
+                                <button type="button" class="file-remove" id="jd-remove">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                        <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Resumes -->
+                    <div class="card" id="resumes-card">
+                        <div class="card-header">
+                            <div class="step-badge">02</div>
+                            <div>
+                                <h2 class="card-title">Candidate Resumes</h2>
+                                <p class="card-subtitle">Upload one or multiple resumes</p>
+                            </div>
+                        </div>
+                        <div class="drop-zone" id="resumes-drop-zone">
+                            <input type="file" id="resumes" name="resumes" accept=".pdf,.docx,.txt" class="file-input"
+                                multiple required>
+                            <div class="drop-zone-content" id="resumes-drop-content">
+                                <div class="drop-icon">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                                        <path
+                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                            stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                                <p class="drop-title">Drag & drop resumes here</p>
+                                <p class="drop-hint">or <span class="drop-link">browse to upload</span></p>
+                                <p class="drop-formats">Multiple files supported • PDF, DOCX, TXT</p>
+                            </div>
+                        </div>
+                        <!-- Resume file list -->
+                        <div class="resume-list" id="resume-list" style="display:none;">
+                            <div class="resume-list-header">
+                                <span id="resume-count">0 resumes selected</span>
+                                <button type="button" class="clear-all-btn" id="clear-resumes">Clear all</button>
+                            </div>
+                            <div class="resume-items" id="resume-items"></div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Special Instructions -->
+                    <div class="card card-full" id="instructions-card">
+                        <div class="card-header">
+                            <div class="step-badge">03</div>
+                            <div>
+                                <h2 class="card-title">Special Instructions</h2>
+                                <p class="card-subtitle">Any specific criteria or preferences for this role</p>
+                            </div>
+                        </div>
+                        <div class="textarea-wrapper">
+                            <textarea id="special_instructions" name="special_instructions"
+                                class="instructions-textarea"
+                                placeholder="e.g. Prefer candidates with 5+ years of Python experience, strong background in machine learning, and prior startup experience. Prioritize those with leadership roles..."
+                                rows="4"></textarea>
+                            <div class="textarea-footer">
+                                <span class="char-count" id="char-count">0 / 1000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="submit-section">
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        <span class="submit-btn-content" id="submit-btn-content">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Screen Candidates
+                        </span>
+                        <span class="submit-btn-loading" id="submit-btn-loading" style="display:none;">
+                            <span class="spinner"></span>
+                            Analyzing Resumes...
+                        </span>
+                    </button>
+                    <p class="submit-hint">AI will analyze all resumes and rank candidates by fit</p>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display:none;">
+        <div class="loading-card">
+            <div class="loading-animation">
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring pulse-ring-2"></div>
+                <div class="loading-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+            </div>
+            <h3 class="loading-title">AI is Analyzing Resumes</h3>
+            <p class="loading-subtitle">Matching candidates against your job description...</p>
+            <div class="loading-steps">
+                <div class="loading-step active" id="step-1">
+                    <div class="step-dot"></div>
+                    <span>Extracting resume content</span>
+                </div>
+                <div class="loading-step" id="step-2">
+                    <div class="step-dot"></div>
+                    <span>Analyzing job requirements</span>
+                </div>
+                <div class="loading-step" id="step-3">
+                    <div class="step-dot"></div>
+                    <span>Ranking candidates</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Modal -->
+    <div class="results-overlay" id="results-overlay" style="display:none;">
+        <div class="results-container">
+            <div class="results-header">
+                <div class="results-header-left">
+                    <h2 class="results-title">Candidate Rankings</h2>
+                    <p class="results-subtitle" id="results-subtitle"></p>
+                </div>
+                <button class="results-close" id="results-close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                </button>
+            </div>
+            <div class="results-body" id="results-body"></div>
+            <div class="results-footer">
+                <button class="screen-again-btn" id="screen-again-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Screen Again
+                </button>
+                <button class="export-btn" id="export-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Export Results
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast" id="error-toast" style="display:none;">
+        <div class="toast-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" />
+            </svg>
+        </div>
+        <span class="toast-message" id="toast-message"></span>
+        <button class="toast-close" id="toast-close">×</button>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>
