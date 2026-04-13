@@ -1,34 +1,18 @@
 import os
 import json
 import logging
+import urllib.request
+import urllib.error
 from pathlib import Path
-from typing import Optional
-from litellm import completion
 from dotenv import load_dotenv
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Configure AI configuration
-# For LiteLLM, we set model-specific keys as environment variables
-# e.g. ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY
-# The AI_API_KEY will be mapped to the appropriate provider key if needed
-api_key = os.getenv("AI_API_KEY")
-model_name = os.getenv("AI_MODEL_NAME", "gemini/gemini-2.0-flash")
-
-if api_key:
-    # Set the provider-specific key for LiteLLM if it's not already set
-    provider = model_name.split("/")[0] if "/" in model_name else "gemini"
-    
-    if provider == "gemini":
-        os.environ["GEMINI_API_KEY"] = api_key
-    elif provider == "anthropic":
-        os.environ["ANTHROPIC_API_KEY"] = api_key
-    elif provider == "openai":
-        os.environ["OPENAI_API_KEY"] = api_key
-else:
-    logger.warning("AI_API_KEY not set. AI screening will not work.")
+API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("AI_API_KEY")
+MODEL = os.getenv("AI_MODEL_NAME", "gpt-4o-mini").replace("openai/", "")
+OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 
 
 def extract_text(file_path: str) -> str:
@@ -67,13 +51,52 @@ def extract_text(file_path: str) -> str:
         return ""
 
 
+def _call_openai(prompt: str) -> str:
+    """
+    Call the OpenAI Chat Completions API directly via urllib.
+    No SDK, no pydantic, no heavy dependencies.
+    """
+    if not API_KEY:
+        raise ValueError(
+            "OPENAI_API_KEY (or AI_API_KEY) is not set. "
+            "Add it to your .env file or Lambda environment variables."
+        )
+
+    payload = json.dumps({
+        "model": MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_completion_tokens": 4096,
+        "response_format": {"type": "json_object"}
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        OPENAI_API_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}",
+        },
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            return body["choices"][0]["message"]["content"].strip()
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        logger.error(f"OpenAI API HTTP error {e.code}: {error_body}")
+        raise RuntimeError(f"OpenAI API error {e.code}: {error_body}") from e
+
+
 def rank_candidates(
     jd_text: str,
-    resumes: list[dict],
+    resumes: list,
     special_instructions: str = ""
-) -> list[dict]:
+) -> list:
     """
-    Use AI (via LiteLLM) to rank candidates based on their resumes against the job description.
+    Use the OpenAI API directly to rank candidates against a job description.
 
     Args:
         jd_text: The job description text
@@ -83,12 +106,6 @@ def rank_candidates(
     Returns:
         List of ranked candidates with scores and reasoning
     """
-    if not os.getenv("AI_API_KEY") and not any(k in os.environ for k in ["GEMINI_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"]):
-        raise ValueError(
-            "AI_API_KEY is not configured. Please add it to your .env file."
-        )
-
-    # Build the resume summaries for the prompt
     resume_summaries = []
     for i, resume in enumerate(resumes, 1):
         resume_summaries.append(
@@ -106,8 +123,8 @@ SPECIAL RECRUITER INSTRUCTIONS:
 Please factor these instructions heavily into your ranking.
 """
 
-    prompt = f"""You are an expert technical recruiter and talent acquisition specialist. 
-Your task is to analyze the following resumes against a job description and rank the candidates 
+    prompt = f"""You are an expert technical recruiter and talent acquisition specialist.
+Your task is to analyze the following resumes against a job description and rank the candidates
 in order of their suitability for the role.
 
 JOB DESCRIPTION:
@@ -124,82 +141,68 @@ Please analyze each candidate thoroughly and provide a ranked list. For each can
 3. Notable gaps or concerns
 4. A brief overall assessment (2-3 sentences)
 
-Return your response as a valid JSON array (and ONLY the JSON array, no other text) in this exact format:
-[
-  {{
-    "rank": 1,
-    "name": "Candidate Name",
-    "score": 92,
-    "strengths": ["strength 1", "strength 2", "strength 3"],
-    "gaps": ["gap 1", "gap 2"],
-    "assessment": "Brief overall assessment of the candidate.",
-    "recommendation": "Highly Recommended"
-  }}
-]
+Return your response as a valid JSON object with a top-level key "candidates" containing an array in this exact format:
+{{
+  "candidates": [
+    {{
+      "rank": 1,
+      "name": "Candidate Name",
+      "score": 92,
+      "strengths": ["strength 1", "strength 2", "strength 3"],
+      "gaps": ["gap 1", "gap 2"],
+      "assessment": "Brief overall assessment of the candidate.",
+      "recommendation": "Highly Recommended"
+    }}
+  ]
+}}
 
 The "recommendation" field should be one of: "Highly Recommended", "Recommended", "Consider", "Not Recommended"
 
 Rank them from highest to lowest score. Be objective, fair, and thorough in your analysis.
-Only return the JSON array, nothing else."""
+Only return the JSON object, nothing else."""
 
     try:
-        model = os.getenv("AI_MODEL_NAME", "gemini/gemini-2.0-flash")
-        
-        response = completion(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=4096,
-            response_format={ "type": "json_object" } if "gpt" in model or "gemini" in model else None
-        )
-        
-        response_text = response.choices[0].message.content.strip()
+        response_text = _call_openai(prompt)
 
-        # Clean up response - sometimes LLMs wrap in markdown code blocks
+        # Clean up markdown code blocks if present
         if response_text.startswith("```"):
             lines = response_text.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines[-1].strip() == "```":
-                lines = lines[:-1]
+            lines = lines[1:] if lines[0].startswith("```") else lines
+            lines = lines[:-1] if lines[-1].strip() == "```" else lines
             response_text = "\n".join(lines)
 
-        ranked = json.loads(response_text)
+        parsed = json.loads(response_text)
 
-        # Handle cases where the whole object is nested under a key like "candidates" or similar
-        if isinstance(ranked, dict):
+        # Unwrap nested keys if necessary
+        if isinstance(parsed, dict):
             for key in ["candidates", "rankings", "ranked_list"]:
-                if key in ranked and isinstance(ranked[key], list):
-                    ranked = ranked[key]
+                if key in parsed and isinstance(parsed[key], list):
+                    parsed = parsed[key]
                     break
             else:
-                # If it's a single object instead of a list
-                if not isinstance(ranked, list):
-                    ranked = [ranked]
+                if not isinstance(parsed, list):
+                    parsed = [parsed]
 
-        # Validate and enrich the response
+        # Validate and normalise each candidate entry
         final_ranked = []
-        for i, candidate in enumerate(ranked):
-            if not isinstance(candidate, dict): continue
-            
+        for i, candidate in enumerate(parsed):
+            if not isinstance(candidate, dict):
+                continue
             candidate["rank"] = i + 1
             candidate.setdefault("strengths", [])
             candidate.setdefault("gaps", [])
             candidate.setdefault("assessment", "No assessment provided.")
             candidate.setdefault("recommendation", "Consider")
-            
             try:
                 candidate["score"] = max(0, min(100, int(candidate.get("score", 50))))
-            except:
+            except (TypeError, ValueError):
                 candidate["score"] = 50
-                
             final_ranked.append(candidate)
 
         return final_ranked
 
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse AI response as JSON: {e}")
-        logger.error(f"Response was: {response_text[:500]}")
+        logger.error(f"Failed to parse OpenAI response as JSON: {e}")
         return [
             {
                 "rank": i + 1,
@@ -213,5 +216,5 @@ Only return the JSON array, nothing else."""
             for i, r in enumerate(resumes)
         ]
     except Exception as e:
-        logger.error(f"AI API error: {e}", exc_info=True)
+        logger.error(f"OpenAI API error: {e}", exc_info=True)
         raise

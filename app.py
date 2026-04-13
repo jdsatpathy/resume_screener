@@ -4,6 +4,7 @@ import uuid
 import logging
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, session
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from resume_screener import extract_text, rank_candidates
@@ -11,6 +12,13 @@ from resume_screener import extract_text, rank_candidates
 load_dotenv()
 
 app = Flask(__name__)
+# Enable CORS for the specific S3 bucket
+CORS(app, resources={r"/*": {"origins": [
+    "http://jd-resume-scrneer-bkt.s3-website-us-east-1.amazonaws.com",
+    "https://jd-resume-scrneer-bkt.s3.amazonaws.com",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
+]}})
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "resume-screener-secret-2024")
 
 # Configuration

@@ -267,12 +267,11 @@
     </div>
 
     <script>
-        // Use relative path for Flask local dev
-        window.API_BASE_URL = '';
+        window.API_BASE_URL = 'https://mvvfl9tc41.execute-api.us-east-1.amazonaws.com';
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=3"></script>
+    <script src="static/js/app.js?v=2"></script>
 </body>
 
 </html>
