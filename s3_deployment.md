@@ -1,6 +1,6 @@
-# S3 and Lambda Deployment Guide
+# AWS Deployment Guide
 
-This guide explains how to deploy the Resume Screener frontend to AWS S3 and the backend logic to AWS Lambda.
+This guide explains how to deploy the Resume Screener application to AWS using the modern serverless stack: **Amplify** for the frontend and **Lambda** for the backend.
 
 ## Phase 1: AWS Lambda Backend
 
@@ -19,57 +19,63 @@ Lambda requires all dependencies to be included in the deployment package, speci
 ### 2. Create Lambda Function
 1. Go to **AWS Lambda** console -> **Create function**.
 2. Upload the `lambda_deploy.zip`.
-3. Set the **Runtime** to Python 3.x.
+3. Set the **Runtime** to Python 3.12.
 4. Set the **Handler** to `lambda_function.lambda_handler`.
-5. **Important**: Increase the timeout (e.g., 30s) and memory (e.g., 512MB) since AI calls take time.
-6. Add your environment variables (`AI_API_KEY`, etc.) in the Lambda configuration.
+5. **Important**: Increase the timeout (e.g., 60s) and memory (e.g., 512MB) since AI calls take time.
+6. Add your environment variables (`OPENAI_API_KEY`, etc.) in the Lambda configuration.
 
 ### 3. Set Up API Gateway
-1. Create an **API Gateway** (HTTP API or REST API).
-2. Create a `POST /screen` route and link it to your Lambda.
-3. **Enable CORS** in API Gateway to allow `https://jd-resume-scrneer-bkt.s3.amazonaws.com`.
-4. Deploy the API and note the **Invoke URL**.
+1. Create an **API Gateway** (HTTP API is recommended for cost and speed).
+2. Create a `POST /screen` route and link it to your Lambda function.
+3. **Important**: Configure CORS in the API Gateway console:
+   - **Access-Control-Allow-Origin**: `*` (or your specific domain).
+   - **Access-Control-Allow-Headers**: `Content-Type`.
+   - **Access-Control-Allow-Methods**: `POST, OPTIONS`.
+4. Deploy the API and copy the **Invoke URL**.
 
 ---
 
-## Phase 2: S3 Frontend
+## Phase 2: Frontend Deployment
 
-### 1. Configure Frontend URL
-In `public/index.html`, add your API URL *before* the script tag:
-```html
-<script>
-    window.API_BASE_URL = 'https://YOUR_API_GATEWAY_URL';
-</script>
-<script src="static/js/app.js"></script>
-```
+You have two primary options for hosting the static frontend (`public/` directory).
 
-### 2. Upload to S3
-1. Go to **AWS S3** -> Create/Select bucket `jd-resume-scrneer-bkt`.
-2. Upload all files from the `public/` folder:
-   - `index.html`
-   - `static/` (css, js, images)
-3. In **Properties** -> **Static website hosting**, enable it.
-4. In **Permissions**, disable "Block all public access" and add a bucket policy to allow public read access:
+### Option A: AWS Amplify (Recommended)
+AWS Amplify provides a full CI/CD pipeline and handles SSL/CDN automatically.
+
+1. **Connect Repository**: Go to the **AWS Amplify** console and click "Create new app".
+2. **Connect Source**: Connect your GitHub/GitLab/Bitbucket repository.
+3. **Configure Build Settings**:
+   - **App Root**: `/`
+   - **Base Directory**: `public/`
+4. **Deploy**: Every time you push to `main`, Amplify will automatically rebuild and host your site.
+
+### Option B: AWS S3 (Legacy/Manual)
+If you prefer simple static hosting without CI/CD:
+
+1. **Configure API URL**: In `public/index.html`, set `window.API_BASE_URL` to your API Gateway Invoke URL.
+2. **Create Bucket**: Create/Select an S3 bucket (e.g., `resume-screener-web`).
+3. **Upload Files**: Upload the contents of the `public/` folder (`index.html` and `static/`).
+4. **Enable Hosting**: In **Properties**, enable "Static website hosting".
+5. **Permissions**: Disable "Block all public access" and apply a Public Read policy:
    ```json
    {
        "Version": "2012-10-17",
-       "Statement": [
-           {
-               "Sid": "PublicRead",
-               "Effect": "Allow",
-               "Principal": "*",
-               "Action": "s3:GetObject",
-               "Resource": "arn:aws:s3:::jd-resume-scrneer-bkt/*"
-           }
-       ]
+       "Statement": [{
+           "Sid": "PublicRead",
+           "Effect": "Allow",
+           "Principal": "*",
+           "Action": "s3:GetObject",
+           "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+       }]
    }
    ```
 
 ---
 
-## Testing locally with the S3 structure
-You can test the static `public/` folder locally using:
+## 🧪 Quick Test Locally
+To test the static frontend production build locally:
 ```bash
-cd public && npx serve
+# Serve the public folder
+npx serve public
 ```
 This will simulate how the site behaves when hosted statically.
