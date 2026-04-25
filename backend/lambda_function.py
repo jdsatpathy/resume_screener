@@ -4,7 +4,7 @@ import base64
 import logging
 from pathlib import Path
 from requests_toolbelt.multipart import decoder
-from resume_screener import extract_text, rank_candidates
+from backend.resume_screener import extract_text, rank_candidates
 
 # Set up logging
 logger = logging.getLogger()
