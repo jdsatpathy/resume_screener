@@ -230,8 +230,10 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
 
         // Validate
-        if (!jdInput.files[0]) {
-            showError('Please upload a Job Description file.');
+        const hasJD = !!jdInput.files[0];
+        const hasInstructions = instructionsTextarea.value.trim().length > 0;
+        if (!hasJD && !hasInstructions) {
+            showError('Please upload a Job Description file or provide Special Instructions.');
             return;
         }
         if (selectedResumes.length === 0) {
